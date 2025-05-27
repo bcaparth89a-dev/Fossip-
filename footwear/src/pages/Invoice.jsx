@@ -11,66 +11,16 @@ import Barcode from "react-barcode";
 import {db} from './firebase.js';
 import { ref, set } from 'firebase/database';
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "axios";import { collection, addDoc } from "firebase/firestore";
+import { dbFirestore } from "./firebase.js"; // Make sure your firestore db is exported as `dbFirestore`
+import { doc, setDoc } from "firebase/firestore";
 import Invoice2 from "./Invoice2.jsx";
+
 const Invoice = () => {
   const [display, setdisplay] = useState(false);
 
 const navigate = useNavigate(); // Initialize useNavigate here
-  
-// print 
-  const printRef = useRef();
-
-const handlePrint = () => {
-  const printContents = printRef.current.innerHTML;
-  const newWindow = window.open("", "height=100%", "width=100%,height=100%");
-  newWindow.document.write(`
-    <html>
-      <head>
-        <title>Print Preview</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 100px; color: black; }
-          page { size: A4; margin: 20mm }
-        </style>
-      </head>
-      <body>
-        ${printContents}
-      </body>
-    </html>
-  `);
-  newWindow.document.close();
-  newWindow.focus();
-  newWindow.print();
-
-    setTimeout(() => {
-    html2canvas(printRef.current).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF();
-      const imgWidth = 200;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`Invoice-${invoiceNumber}.pdf`);
-    });
-
-    newWindow.close();
-  }, 1000);
-};
-
-
-  // accessing value
+    // accessing value
   const [name, setName] = useState();
   const [email, setEmail] = useState();
   const [phonenumber,setPhoneNumber]=useState();
@@ -178,104 +128,59 @@ const handlePrint = () => {
   };
 
   // Invoice Number Logic
-  function generateRandomString(length = 10) {
-    const characters =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "";
+  function generateRandomString(length = 5) {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
     for (let i = 0; i < length; i++) {
-      const randomChar = characters.charAt(
-        Math.floor(Math.random() * characters.length)
-      );
+      const randomChar = characters.charAt(Math.floor(Math.random() * characters.length));
       result += randomChar;
     }
-    return result;
+  return result;
   }
+ 
+  const [invoiceNumber, setInvoiceNumber] = useState(() => {
   const invoicePrefix = "NOBLE-";
   const uniqueId = generateRandomString(5);
-  const invoiceNumber = invoicePrefix + uniqueId;
-   
-  // Email logic 
-  // Genrate Email Body
-  const generateEmailBody = () => {
-  const productDetails = products.map(
-    (product, index) => `
-      ${index + 1}. Product Name: ${product.name}
-         Code: ${product.code}
-         Quantity: ${product.qty}
-         Unit Price: ₹${product.unitPrice}
-         Total: ₹${product.qty * product.unitPrice}
-    `
-  ).join('\n');
-
-  return `
-    📄 Invoice Summary
-
-    🧾 Invoice Number: ${invoiceNumber}
-    📅 Date: ${date}
-
-    👤 Customer Details:
-    - Name: ${name}
-    - Email: ${email}
-    - Phone Number: +91-${phonenumber}
-
-    📦 Product Details:
-    ${productDetails}
-
-    🧮 Subtotal: ₹${subtotal}
-    🎁 Discount: ₹${discount || 0}
-    💰 Total: ₹${subtotal - (discount || 0)}
-
-    Thank you for shopping with us!
-  `;
-  };
-  // Email Logic
-  const sendEmail = async () => {
-    try {
-      await axios.post("http://localhost:5000/send-email", {
-        to: email,
-        subject: "Thanks From Nobel-Shoes App",
-        text: generateEmailBody() ,
-      });
-      alert("Email sent!");
-    } catch (error) {
-      console.error(error);
-      alert("Email failed.");
-    }
-  }
-  
+  return invoicePrefix + uniqueId;
+  });
+ 
   // firebase
-  const handleSave = () => {
-    const invoiceData = {
-      invoiceNumber: invoiceNumber,
-      name: name,
-      email: email,
-      date: date,
-      phonenumber: phonenumber,
-      productsDetails: products.map((product) => ({
-        productCode: product.code,
-        name: product.name,
-        perproductprice: product.unitPrice,
-        quantity: product.qty,
-        Price: product.unitPrice * product.qty,
-      })),
-      subtotal: subtotal,
-      discount: discount,
-      total: subtotal - discount,
-    };
-
-    // Write to Firebase
-    set(ref(db, 'invoices/invoice1'), invoiceData) // Assuming 'db' and 'ref' are correctly set up from Firebase
-      .then(() => {
-        alert('Invoice saved to Firebase!');
-        sendEmail(); // Your existing sendEmail call
-        navigate("/invoice2"); // Navigate to Invoice2.jsx
-      })
-      .catch((error) => {
-        console.error('Error saving invoice:', error);
-        alert('Error saving invoice: ' + error.message); // Show error to user
-      });
+  const handleSave = async () => {
+  const invoiceData = {
+    invoiceNumber: invoiceNumber,
+    name: name,
+    email: email,
+    date: date,
+    phonenumber: phonenumber,
+    productsDetails: products.map((product) => ({
+      productCode: product.code,
+      name: product.name,
+      perproductprice: product.unitPrice,
+      quantity: product.qty,
+      Price: product.unitPrice * product.qty,
+    })),
+    subtotal: subtotal,
+    discount: discount,
+    total: subtotal - discount,
   };
 
+   // Construct a unique ID (e.g. "INV1234_JohnDoe")
+  const invoiceId = `${invoiceNumber}_${name.replace(/\s+/g, "")}`;
+
+  try {
+    // ✅ Save to Realtime Database
+    await set(ref(db, 'invoices/invoice1'), invoiceData);
+
+    // ✅ Save to Firestore for permanent record
+    await setDoc(doc(dbFirestore, "invoices", invoiceId), invoiceData);
+
+    alert("Invoice saved to Firebase Realtime DB and Firestore!");
+    navigate("/invoice2");
+  } catch (error) {
+    console.error("Error saving invoice:", error);
+    alert("Error saving invoice: " + error.message);
+  }
+};	
 
   // Phonne number logic 
   const handlePhone = (event) => {
@@ -360,32 +265,11 @@ const handlePrint = () => {
       {/* Invoice part starts from here */}
       <div className="bg-gray-200 w-400S h-180  flex items-center justify-center   ">
         {/* First Container */}
-        <div ref={printRef} className=" h-[97%] w-[75%] bg-white mt-2 ml-10 mr-4 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md">
+        <div className=" h-[97%] w-[75%] bg-white mt-2 ml-10 mr-4 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md">
           <div className="ml-[10px] flex items-center justify-between mt-3">
             {/* Left-aligned title  Invoice Provider*/}
             <div className="flex items-center ml-2">
               <p className="font-bold text-[20px]">Invoice Preview</p>
-            </div>
-            {/* Right-aligned   Icons*/}
-            <div className="flex items-center gap-4 mr-4">
-              <a onClick={handlePrint}
-                className="hover:bg-gray-200 bg-gray-100 border-2 border-gray-400 rounded"
-              >
-                <i class="fa-solid fa-print"></i>
-              </a>
-              <a
-                href="#"
-                className="hover:bg-gray-200 bg-gray-100 border-2 border-gray-400 rounded"
-              >
-                <i class="fa-brands fa-whatsapp"></i>
-              </a>
-              <a
-                onClick={sendEmail}
-                href="#"
-                className="hover:bg-gray-200 bg-gray-100 border-2 border-gray-400 rounded"
-              >
-                <i class="fa-regular fa-envelope"></i>
-              </a>
             </div>
           </div>
           {/* part 2 */}
@@ -437,7 +321,7 @@ const handlePrint = () => {
               type="tel"
               value={phonenumber}
               onChange={handlePhone}
-              placeholder="+91 XXXXXX"
+              placeholder="+91 XXXXXXXXXX"
               maxLength="10"
               className="mt-1 text-[16px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none justify-center w-38"
               required
@@ -506,7 +390,7 @@ const handlePrint = () => {
         {/* Second Conatainer */}
         <div className="h-[97%] w-[25%] bg-white mt-2 ml-3 mr-10 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md">
           {/* part 1 */}
-          <div className="h-[350px] bg-amber-100 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+          <div className="h-[350px] bg-white overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
             {products.map((product) => (
               <div key={product.id}>
                 <div className="flex justify-between items-center ml-[18px] mr-[18px] py-2">
@@ -566,7 +450,7 @@ const handlePrint = () => {
                     <input
                       onChange={(e) => setDiscount(Number(e.target.value))}
                       type="number"
-                      className="w-20 ml-14"
+                      className="w-20 ml-14 border-b-2 border-gray-300 outline-none bg-transparent "
                     ></input>
                   </div>
                 </td>

@@ -4,8 +4,14 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 const logoPath = path.join(__dirname, "LOGO2.jpg");
-const logoBase64 = fs.readFileSync(logoPath, { encoding: "base64" });
-const logoDataUrl = `data:image/jpeg;base64,${logoBase64}`;
+let logoDataUrl = "";
+try {
+  const logoBase64 = fs.readFileSync(logoPath, { encoding: "base64" });
+  logoDataUrl = `data:image/jpeg;base64,${logoBase64}`;
+} catch (err) {
+  console.error("Error loading logo image:", err.message);
+  logoDataUrl = ""; // fallback
+}
 
 
 router.post("/generate", async (req, res) => {
@@ -167,7 +173,11 @@ router.post("/generate", async (req, res) => {
     res.send(pdf);
   } catch (error) {
     console.error("PDF Generation Error:", error);
-    res.status(500).send("Failed to generate PDF");
+    res.status(500).json({
+    message: "PDF generation failed",
+    error: error.message,
+  });
+
   }
 });
 

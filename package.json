@@ -1,5 +1,24 @@
 {
   "dependencies": {
+    "firebase": "^11.8.1",
+    "firestore": "^1.1.6",
     "react-to-print": "^3.1.0"
-  }
+  },
+  "name": "for-invoice-module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "scripts": {
+    "dev": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "concurrently \"npm run client\" \"npm run server\"",
+    "client": "cd footwear && npm start",
+    "server": "cd server && npm run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

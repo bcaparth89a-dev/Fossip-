@@ -20,7 +20,7 @@ const Invoice2 = () => {
     const blob = new Blob([response.data], { type: 'application/pdf' });
     const link = document.createElement('a');
     link.href = window.URL.createObjectURL(blob);
-    link.download = `${invoice.name}.pdf`; // fixed this too
+    link.download = `${invoice.invoiceNumber}.pdf`; // fixed this too
     link.click();
 
     // Show success popup
