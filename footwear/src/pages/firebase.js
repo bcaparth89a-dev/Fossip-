@@ -2,7 +2,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 import { getFirestore } from "firebase/firestore";
-
 const firebaseConfig = {
   apiKey: "AIzaSyCwNceQOFHOfsCtglg5A0JKzVZd_x07I0U",
   authDomain: "shoes-shop-3cbe6.firebaseapp.com",

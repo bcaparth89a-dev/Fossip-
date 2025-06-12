@@ -14,16 +14,18 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";import { collection, addDoc } from "firebase/firestore";
 import { dbFirestore } from "./firebase.js"; // Make sure your firestore db is exported as `dbFirestore`
 import { doc, setDoc } from "firebase/firestore";
+import validator from "validator";
 import Invoice2 from "./Invoice2.jsx";
 
 const Invoice = () => {
   const [display, setdisplay] = useState(false);
+  const discountRef = useRef(null);
+  const navigate = useNavigate(); // Initialize useNavigate here
 
-const navigate = useNavigate(); // Initialize useNavigate here
-    // accessing value
+  // accessing value
   const [name, setName] = useState();
   const [email, setEmail] = useState();
-  const [phonenumber,setPhoneNumber]=useState();
+  const [phonenumber,setPhoneNumber]=useState("");
   const [date, setDate] = useState("");
   const [productCode, setProductCode] = useState(""); // what user types
   const [products, setProducts] = useState([]);
@@ -164,7 +166,7 @@ const navigate = useNavigate(); // Initialize useNavigate here
     total: subtotal - discount,
   };
 
-   // Construct a unique ID (e.g. "INV1234_JohnDoe")
+   // Construct a unique ID 
   const invoiceId = `${invoiceNumber}_${name.replace(/\s+/g, "")}`;
 
   try {
@@ -182,15 +184,53 @@ const navigate = useNavigate(); // Initialize useNavigate here
   }
 };	
 
-  // Phonne number logic 
-  const handlePhone = (event) => {
-    let value = event.target.value.replace(/\D/g, ""); // Allow only digits
+// EMail validation Logic 
+const [errorMessage1, setErrorMessage1] = useState("Email is required."); // Default error message
 
-    // Ensure only 10 digits after +91
-    if (value.length <= 10) {
-      setPhoneNumber(value);
-    } 
+const handleEmail = (event) => {
+  let value = event.target.value.trim(); // Remove leading/trailing spaces
+  setEmail(value);
+
+  // Validate email format dynamically
+  if (value.length === 0) {
+    setErrorMessage1("Email is required.");
+  } else if (validator.isEmail(value)) {
+    setErrorMessage1(""); // Clear error when valid
+  } else {
+    setErrorMessage1("Enter a valid email address.");
   }
+};
+
+
+  
+// Phonne number logic -----
+ const [errorMessage, setErrorMessage] = useState("Phone number is must required."); // Default error message
+ const handlePhone = (event) => {
+  let value = event.target.value.replace(/\D/g, ""); // Remove non-digit characters
+
+  // Check if input is empty first
+  if (value.length === 0) {
+    setErrorMessage("Phone number is must required."); // Show error when empty
+    setPhoneNumber(""); // Ensures empty state
+    return;
+  }
+  // Restrict input strictly to 10 digits
+  if (value.length > 10) {
+    value = value.slice(0, 10);
+  }
+  // Allow user to modify input while typing
+  setPhoneNumber(value);
+  // Validate dynamically
+  if (value.length === 10) {
+    if (/^[6-9]\d{9}$/.test(value)) {
+      setErrorMessage(""); // Clear error when valid
+    } else {
+      setErrorMessage("Phone number must start with 6-9 and be exactly 10 digits.");
+    }
+  } else {
+    setErrorMessage("Phone number must be exactly 10 digits long.");
+  }
+};
   // Date logic
   // Set current date as default when component mounts
   useEffect(() => {
@@ -200,288 +240,285 @@ const navigate = useNavigate(); // Initialize useNavigate here
     const dd = String(today.getDate()).padStart(2, "0");
     setDate(`${yyyy}-${mm}-${dd}`);
   }, []);
+
   return (
     <div>
       {/* Navigation part starts from here */}
-      <div className="opacity-100  bg-white-400 w-[100%] h-auto  justify-center md:w-full md:h-[3%] border-b-3 border-b-gray-100 flex items-center hover:border-gray-200">
-        {/* 1 */}
-        <div className="ml-7 justify-center">
-          <img
-            src={negativeImage}
-            alt="Logo"
-            className="w-25 h-auto object-cover ml-1"
-          />
-        </div>
-        {/* 2 */}
-        <div className="h-8 flex items-center justify-between border border-gray-300  rounded-lg p-2 w-auto max-w-sm mr-0 ml-auto shadow-lg border:width-1 mr-2 hover:border-gray-800 hover:bg-gray-100">
-          <svg
-            className="w-4 h-4 text-gray-500 flex items-center hover:border-gray-800 border-gray-300"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M12.9 14.32a8 8 0 111.414-1.414l4.243 4.243a1 1 0 01-1.414 1.414l-4.243-4.243zM8 14a6 6 0 100-12 6 6 0 000 12z"
-              clipRule="evenodd"
-            ></path>
-          </svg>
-          <input
-            type="text"
-            className="focus:outline-none focus:ring-0"
-            value={productCode}
-            onChange={(e) => setProductCode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearch();
-            }}
-            placeholder="Scan barcode or type code"
-          />
-        </div>
-        {/* 3 */}
-        <div className="flex items-center ml-3 mr-10 mt-1 mb-1 hover:text-black">
-          <button onClick={() => setdisplay(!display)}>
-            <img
-              src={id}
-              alt="Logo"
-              className="w-8 h-8 border border-gray-400 rounded mr-1"
-            />
-          </button>
-          <button
-            onClick={() => setdisplay(!display)}
-            className="text-gray-700 hover:text-gray-950"
-          >
-            Biller, Raju Bhai
-          </button>
-        </div>
-        {display && (
-          <div
-            className="ml-260 mt-10 h-[60px] w-[300px] fixed top-10 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow"
-            style={{ left: "320px" }}
-          >
-            <Toggle />
-          </div>
-        )}
-      </div>
+    <div className="h-15 w-full border-b border-gray-200 bg-white flex items-center justify-between px-4 py-2">
+    {/* Logo */}
+     <div className="flex items-center">
+    <img
+      src={negativeImage}
+      alt="Logo"
+      className="w-20 h-auto object-contain"
+    />
+  </div>
+  {/* Right side: Search bar + Profile */}
+  <div className="flex items-center gap-4">
+    {/* Search Bar */}
+    <div className="ml-6 flex items-center border border-gray-300 rounded-md px-2 h-8 bg-gray-50 hover:border-gray-700">
+      <svg
+        className="w-4 h-4 text-gray-500 mr-1"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path
+          fillRule="evenodd"
+          d="M12.9 14.32a8 8 0 111.414-1.414l4.243 4.243a1 1 0 01-1.414 1.414l-4.243-4.243zM8 14a6 6 0 100-12 6 6 0 000 12z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <input
+        type="text"
+        className=" text-sm w-43 bg-transparent focus:outline-none placeholder:text-gray-500"
+        value={productCode}
+        onChange={(e) => setProductCode(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleSearch();
+        }}
+        placeholder="Scan barcode or type code"
+      />
+    </div>
+
+    {/* Profile */}
+    <div className="flex items-center gap-1">
+      <button onClick={() => setdisplay(!display)}>
+        <img
+          src={id}
+          alt="User"
+          className="w-8 h-8 border border-gray-400 rounded-3"
+        />
+      </button>
+      <button
+        onClick={() => setdisplay(!display)}
+        className="text-sm text-gray-700 hover:text-black"
+      >
+        Biller, Raju Bhai
+      </button>
+    </div>
+  </div>
+  {/* Toggle Menu */}
+  {display && (
+    <div className="absolute top-14 right-4 w-72 bg-white shadow-md rounded z-50">
+      <Toggle />
+    </div>
+  )}
+</div>
       {/* End of Nav Bar */}
       {/* Invoice part starts from here */}
-      <div className="bg-gray-200 w-400S h-180  flex items-center justify-center   ">
+      <div className="p-2 sm:p-6 md:p-4 bg-gray-200 min-h-screen">
+       <div className="ml-8 w-400S h-180 sd:h-150  md:h-180 ld:h-200 flex items-center justify-center space-x-4">
         {/* First Container */}
-        <div className=" h-[97%] w-[75%] bg-white mt-2 ml-10 mr-4 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md">
-          <div className="ml-[10px] flex items-center justify-between mt-3">
-            {/* Left-aligned title  Invoice Provider*/}
-            <div className="flex items-center ml-2">
-              <p className="font-bold text-[20px]">Invoice Preview</p>
+          <div className="flex flex-col h-[97%] w-[75%] sm:h-[115%] md:h-[107%] lg:h-[97%] sm:w-[90%] md:w-[85%] lg:w-[75%] bg-white mt-3 mx-auto mb-3 border-gray-300 border-[3px] shadow-md rounded hover:border-gray-200 ">
+            {/* Part 1: Header */}
+            <div className="flex-grow px-4 flex items-center justify-between mt-3">
+              <p className="font-bold text-lg md:text-xl">Invoice Preview</p>
             </div>
-          </div>
-          {/* part 2 */}
-          <div className="ml-[18px] flex items-center justify-between mt-13">
-            {/* Left-aligned Invoice Number */}
-            <div className="flex flex-col">
-              <p className="h-6 border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none justify-center text-[17px] font-bold placeholder:font-normal placeholder:text-gray-400 w-35 ">
-                {invoiceNumber}
+
+            {/* Part 2: Invoice Number and Date */}
+            <div className="px-4 flex justify-between items-center mt-10">
+              <p className="font-bold text-lg underline w-[50%]">{invoiceNumber}</p>
+              <p className="text-base text-right w-[50%] mx-1">{date}</p>
+            </div>
+
+            {/* Part 3: Customer Info Inputs */}
+            <div className="px-4 mt-4 flex flex-col gap-1">
+              {/* Name */}
+              <div>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="First_Name Last_name"
+                  className="text-[17px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none mt-1 w-[200px]"
+                  required
+                />
+                <p className="text-red-500 text-[12px] h-4">{name ? "" : "Name is Required"}</p>
+              </div>
+
+              {/* Email */}
+              <div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={handleEmail}
+                  placeholder="abc123@gmail.com"
+                  className="text-[17px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none w-[200px]"
+                  required
+                />
+                <p className="text-red-500 text-[12px] h-4">{errorMessage1}</p>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <input
+                  type="tel"
+                  value={phonenumber}
+                  onChange={handlePhone}
+                  placeholder="XXXXXXXXXX"
+                  maxLength="14"
+                  className="text-[17px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none w-[200px]"
+                  required
+                />
+                <p className="text-red-500 text-[12px] h-4">{errorMessage}</p>
+              </div>
+            </div>
+
+            {/* Part 4: Product Table */}
+            <div className="px-4 mt-5 h-[170px] w-full overflow-y-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="p-2 border-y-2 border-gray-300">
+                    <th className="p-2 w-[40%]">Product</th>
+                    <th className="p-2 w-[15%]">QTY</th>
+                    <th className="p-2 w-[20%]">Unit Price</th>
+                    <th className="p-2 w-[25%]">Total Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product, index) => (
+                    <tr key={index}>
+                      <td>{product.name}</td>
+                      <td>{product.qty}</td>
+                      <td>{product.unitPrice}</td>
+                      <td>{product.qty * product.unitPrice}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Part 5: Totals */}
+            <div className="mt-10 mb-0 ml-auto mr-4 w-[250px] min-w-[250px]">
+              <table className="w-full">
+                <tbody>
+                  <tr>
+                    <th className="p-2 w-[40%] text-[16px]">SubTotal</th>
+                    <td className="pl-11 h-10">₹ {subtotal}</td>
+                  </tr>
+                  <tr>
+                    <th className="p-2 w-[40%] text-[16px]">Discount</th>
+                    <td className="pl-11 h-10">₹ {discount}</td>
+                  </tr>
+                  <tr>
+                    <th className="p-2 w-[40%] text-[16px]">Total</th>
+                    <td className="pl-11 h-10">₹ {subtotal - discount}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Part 6: Footer */}
+            <div className="mb-2 mt-auto">
+              <hr className="border-t border-gray-300 mt-5 mx-4" />
+              <p className="text-center text-sm mt-2">
+                THANK YOU FOR SHOPPING WITH US, VISIT AGAIN
               </p>
             </div>
-            {/* right aligned date input   */}
-            <div className="flex flex-col">
-              <input
-                type="date"
-                value={date}
-                readOnly
-                className="h-8 w-[100%] border-none focus:outline-none justify-center text-blue gap-4 text-[15px] cursor-not-allowed"
-                required
-              />
-            </div>
           </div>
-
-          {/* Part 3 */}
-          <div className="ml-[18px] ">
-            <p className="text-[16px] mt-2 ">Name </p>
-            <input
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="First_Name Last_name"
-              className="text-[16px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none justify-center mt-1 w-40"
-              required
-            />
-            <p className="text-red-500 text-[12px]">
-              {name ? "" : "Name is Required"}
-            </p>
-            <input
-              type="Email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="abc123@gmail.com"
-              className="mt-1 text-[16px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none justify-center w-38"
-              required
-            />
-            <p className="data text-red-500 text-[12px]">
-              {email ? "" : "Eamil is Required"}
-            </p>
-            <input
-              type="tel"
-              value={phonenumber}
-              onChange={handlePhone}
-              placeholder="+91 XXXXXXXXXX"
-              maxLength="10"
-              className="mt-1 text-[16px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none justify-center w-38"
-              required
-            />
-            <p className="data text-red-500 text-[12px]">
-              {phonenumber ? "" : "Phone number is Required"}
-            </p>
-          </div>
-
-          {/* Part 4 */}
-          <div className="mt-5 ml-[18px] mr-[18px] h-[170px] w-auto overflow-y-auto">
-            <table className="w-full text-left">
-              <tr className="p-2 border-gray-300 border-y-2">
-                <th className="p-2 w-[40%]">Product</th>
-                <th className="p-2 w-[15%]">QTY</th>
-                <th className="p-2 w-[20%]">Unit Price</th>
-                <th className="p-2 w-[25%]">Total Price</th>
-              </tr>
-              {products.map((product) => (
-                <tr>
-                  <td className="">{product.name}</td>
-                  <td className="">{product.qty}</td>
-                  <td className="">{product.unitPrice}</td>
-                  <td className="">{product.qty * product.unitPrice}</td>
-                </tr>
-              ))}
-            </table>
-          </div>
-          {/* Part 5 */}
-          <div className="h-[120px] w-[250px] mr-[15px] ml-auto mb-0 mt-10">
-            <table className="w-[100%]">
-              <tr className="">
-                <th className="p-2 w-[40%]" style={{ fontSize: "16px" }}>
-                  SubTotal
-                </th>
-                <td className="pl-11 h-10">₹ {subtotal}</td>
-              </tr>
-              <tr className="">
-                <th className="p-2 w-[40%]" style={{ fontSize: "16px" }}>
-                  Discount
-                </th>
-                <td className="pl-11 h-10">₹{discount}</td>
-              </tr>
-              <tr className="">
-                <th className="p-2 w-[40%]" style={{ fontSize: "16px" }}>
-                  Total
-                </th>
-                <td
-                  onChange={(event) => setName(event.target.value)}
-                  className="pl-11 h-10"
-                >
-                  ₹{subtotal - discount}
-                </td>
-              </tr>
-            </table>
-          </div>
-          {/* Part 7 */}
-          <div className="mb-[0px] mt-auto">
-            <hr className="border-t border-gray-300 mt-7 mr-[18px] ml-[18px]" />
-            <p className="mt text-2 text-center">
-              THANK YOU FOR SHOPPING WITH US ,VISIT AGAIN{" "}
-            </p>
-          </div>
-        </div>
         {/* container 1 Ends here */}
         {/* Second Conatainer */}
-        <div className="h-[97%] w-[25%] bg-white mt-2 ml-3 mr-10 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md">
-          {/* part 1 */}
-          <div className="h-[350px] bg-white overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-            {products.map((product) => (
-              <div key={product.id}>
-                <div className="flex justify-between items-center ml-[18px] mr-[18px] py-2">
-                  <p>{product.name}</p>
-                  <button onClick={() => handleDelete(product.id)}>
-                    <i className="fa-solid fa-trash"></i>
+          <div className="h-[97%] w-[35%] bg-white mt-2 ml-6 mr-10 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md flex flex-col">
+             {/* part 1 */}
+             <div className="h-[350px] bg-white overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 px-3 sm:px-4 md:px-5">
+          {products.map((product) => (
+            <div key={product.id} className="mb-2">
+              {/* Product name and delete button */}
+              <div className="flex justify-between items-center py-2">
+                <p className="text-sm sm:text-base md:text-[16px]">{product.name}</p>
+                <button onClick={() => handleDelete(product.id)}>
+                  <i className="fa-solid fa-trash  hover:text-red-800 text-sm md:text-base"></i>
+                </button>
+              </div>
+
+              {/* Quantity controls and unit price */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center bg-white p-1 rounded-lg shadow-md w-[80px] sm:w-[90px] md:w-[100px] h-7">
+                  <button
+                    onClick={() => decreaseQty(product.id)}
+                    className="text-sm bg-white hover:bg-gray-300 text-black font-bold rounded px-1"
+                  >
+                    –
+                  </button>
+                  <span className="mx-1 text-sm font-semibold text-black">
+                    {product.qty}
+                  </span>
+                  <button
+                    onClick={() => increaseQty(product.id)}
+                    className="bg-white hover:bg-gray-300 text-black font-bold rounded px-1"
+                  >
+                    +
                   </button>
                 </div>
-                <div className="flex justify-between items-center ml-[18px] mr-[18px]">
-                  <div className="flex bg-white text-white p-1 rounded-lg shadow-md w-11 h-7">
-                    <button
-                      onClick={() => decreaseQty(product.id)}
-                      className="text-[15px] bg-white hover:bg-gray-300 text-black font-bold rounded-lg"
-                    >
-                      –
-                    </button>
-                    <span className="mx-1 text-[15px] font-semibold bg-white text-black rounded-md shadow-inner">
-                      {product.qty}
-                    </span>
-                    <button
-                      onClick={() => increaseQty(product.id)}
-                      className=" bg-white hover:bg-gray-300 text-black font-bold rounded-lg"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <p className="text-15">₹{product.unitPrice}</p>
-                </div>
-                <div>
-                  <hr className="border-t border-gray-400 mt-2 mr-[19px] ml-[18px]" />
-                </div>
+                <p className="text-sm sm:text-base">₹{product.unitPrice}</p>
               </div>
-            ))}
-          </div>
-          <div className="h-[120px] w-[260px] mr-[15px] ml-auto mb-0 mt-16">
-            <table className="w-[100%]">
-              <tr>
-                <th
-                  className="p-2 w-[40%] text-center"
-                  style={{ fontSize: "16px" }}
-                >
-                  SubTotal
-                </th>
-                <td className="h-10 text-center">
-                  <div>₹ {subtotal}</div>
-                </td>
-              </tr>
-              <tr>
-                <th
-                  className="p-2 w-[40%] text-center"
-                  style={{ fontSize: "16px" }}
-                >
-                  Discount
-                </th>
-                <td className="h-10 text-center">
-                  <div>
-                    <input
-                      onChange={(e) => setDiscount(Number(e.target.value))}
-                      type="number"
-                      className="w-20 ml-14 border-b-2 border-gray-300 outline-none bg-transparent "
-                    ></input>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <th
-                  className="p-2 w-[40%] text-center"
-                  style={{ fontSize: "16px" }}
-                >
-                  Total
-                </th>
-                <td className="h-10 text-center">
-                  <div>₹{subtotal - discount}</div>
-                </td>
-              </tr>
-            </table>
-          </div>
-          <div className="mt-6">
-            <button onClick={handleSave} className="hover:bg-white hover:text-black ml-19 mr-10 h-8 w-20  bg-blue-500 text-white text-center border-2 border-blue-600 rounded ">
-              Submit
-            </button>
-            <button
-              onClick={handleClear}
-              className="h-8 w-20  bg-blue-500 text-white text-center border-2 border-blue-600 rounded"
-            >
-              Clear
-            </button>
-          </div>
+
+              {/* Divider */}
+              <hr className="border-t border-gray-300 mt-2" />
+            </div>
+          ))}
         </div>
-      </div>
+        {/* part 2 */}
+    {/* part 2 */}
+<div className="w-full mt-8 px-2 sm:px-4 md:px-6 overflow-x-auto">
+  <div className="min-w-[300px]"> {/* ensures table isn't smaller than a minimum width */}
+    <table className="w-full text-center text-[16px]">
+      <tbody>
+        <tr>
+          <th className="py-2 w-[40%] text-left">SubTotal</th>
+          <td className="h-10 text-right">₹{subtotal}</td>
+        </tr>
+        <tr>
+           <th
+            className="py-2 w-[40%] text-left cursor-pointer"
+            onClick={() => discountRef.current?.focus()} // ✅ 2. Focus input on click
+          >
+            Discount
+          </th>
+          <td className="h-10 text-right max-w-[120px] sm:max-w-[100px] md:max-w-full overflow-hidden">
+            <input
+              ref={discountRef} // ✅ 3. Attach ref to input
+              type="number"
+              onChange={(e) => setDiscount(Number(e.target.value))}
+              className="w-[50%] border-b-2 border-gray-900 outline-none bg-transparent text-right text-[16px] truncate"
+            />
+          </td>
+        </tr>
+        <tr>
+          <th className="py-2 text-left">Total</th>
+          <td className="h-10 text-right">₹{subtotal - discount}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>   
+
+    {/* Button Section */}
+    <div className="flex justify-center sm:justify-end gap-4 mt-6 flex-wrap">
+      <button
+        onClick={handleSave}
+        className="h-8 w-25 bg-blue-500 text-white text-center border-2 border-blue-600 rounded hover:bg-white hover:text-black transition"
+      >
+        Submit
+      </button>
+      <button
+        onClick={handleClear}
+        className="h-8 w-25 bg-blue-500 text-white text-center border-2 border-blue-600 rounded hover:bg-white hover:text-black transition"
+      >
+        Clear
+      </button>
     </div>
+    {/* Part 6: Footer */}
+    <div className="mb-2 mt-auto">
+              <hr className="border-t border-gray-300 mt-5 mx-4" />
+              <p className="text-center text-sm mt-2">
+                THANK YOU FOR SHOPPING 
+              </p>
+    </div>
+    </div>
+  </div>
+ </div>
+ </div>
   );
 };
 export default Invoice;
