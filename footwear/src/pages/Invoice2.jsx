@@ -337,36 +337,49 @@ const uploadToCloudinary = async (pdfBlob) => {
 };
 
 const handleWhatsAppClick = (pdfUrl) => {
-  const phoneNumber = invoice.phonenumber; // Must be like 91XXXXXXXXXX
-  const productDetailsString = invoice.productsDetails.map((product, index) => {
-    return `
-Product ${index + 1}*:
-Name: ${product.name}
-Qty: ${product.quantity}
-Unit Price: ₹${product.perproductprice}
-Total: ₹${product.Price}`;
-  }).join("\n");
+  let phoneNumber = invoice.phonenumber?.trim().replace(/\D/g, "");
+
+  if (phoneNumber.length === 10) {
+    phoneNumber = "91" + phoneNumber;
+  }
+
+  if (!/^\d{12}$/.test(phoneNumber)) {
+    alert("Please enter a valid 10-digit Indian number.");
+    return;
+  }
+
+  const timestamp = new Date().getTime();
 
   const message = `
-Dear ${invoice.name}, thank you for choosing Noble Footwear. We’re delighted to serve you! 👞🛍️
+Dear ${invoice.name}, thank you for choosing Noble Footwear. 👞🛍️
 
-🧾 *Invoice No:* ${invoice.invoiceNumber}  
-📅 *Date:* ${invoice.date}  
-💰 *Amount:* ₹${invoice.total}
+🧾 Invoice No: ${invoice.invoiceNumber}  
+📅 Date: ${invoice.date}  
+💰 Amount: ₹${invoice.total}
 
-📄 *Download your invoice PDF:*  
-${pdfUrl}
+📄 Download your invoice PDF:  
+${pdfUrl}?t=${timestamp}
 
-📞 Need help? Call us at *9173912755*
+📞 Help: 9173912755  
+– Noble Footwear  
+G-6/7, Jethwani Super Market, Dabhoi – 391110
+`.trim();
 
-– *Noble Footwear*  
-G-6/7, Jethwani Super Market,  
-B/s Bus Stand, DABHOI – 391110
-`;
+  const encodedMessage = encodeURIComponent(message);
 
-  const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-  window.open(url, "_blank");
+  // ✅ Detect if user is on mobile
+  const isMobile = /iPhone|Android|iPad/i.test(navigator.userAgent);
+
+  const baseUrl = isMobile
+    ? "https://wa.me"
+    : "https://web.whatsapp.com/send"; // Use WhatsApp Web for desktop
+
+  const finalUrl = `${baseUrl}?phone=${phoneNumber}&text=${encodedMessage}`;
+
+  // ✅ Open in a fresh tab with unique name
+  window.open(finalUrl, `_blank_${timestamp}`);
 };
+
 
 const handleGenerateUploadAndSend = async () => {
   const pdfBlob = await generatePDF();
@@ -377,6 +390,7 @@ const handleGenerateUploadAndSend = async () => {
 
   handleWhatsAppClick(pdfUrl);
 };
+
 
  // Email Logic  
   const sendEmail = async () => {
