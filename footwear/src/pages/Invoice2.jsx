@@ -435,7 +435,7 @@ const handleGenerateUploadAndSend = async () => {
   <div className="flex justify-center items-center min-h-screen bg-gray-200 font-sans px-2 sm:px-4 md:px-6 lg:px-8">
   <div className="mt-15 mb-10 h-auto w-full max-w-[650px] bg-white border-4 border-gray-200 rounded-1xl shadow-[0_6px_20px_rgba(0,0,0,0.15)]">
      {/* logo Part */}
-  <div className="flex items-center w-full px-4 sm:px-6 md:px-8 lg:px-10 bg-white border-b border-gray-400 shadow-sm">
+  <div className="flex items-center w-full px-4 sm:px-6 md:px-8 lg:px-10 bg-white border-b border-gray-400 shadow-sm sticky top-0 z-50">
   {/* Left - Back button */}
   <div className="flex-shrink-0">
     <button

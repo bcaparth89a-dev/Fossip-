@@ -244,6 +244,7 @@ const handleEmail = (event) => {
   return (
     <div>
       {/* Navigation part starts from here */}
+    <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
     <div className="h-15 w-full border-b border-gray-200 bg-white flex items-center justify-between px-4 py-2">
     {/* Logo */}
      <div className="flex items-center">
@@ -303,6 +304,7 @@ const handleEmail = (event) => {
       <Toggle />
     </div>
   )}
+</div>
 </div>
       {/* End of Nav Bar */}
       {/* Invoice part starts from here */}
