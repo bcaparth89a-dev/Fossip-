@@ -1,26 +1,51 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import axios from "axios";
 
 function Toggle() {
   const fileInputRef = useRef(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // logo click logic
+  const cloudName = "dye4ypaqp";
+  const uploadPreset = "invoices2";
+
+  useEffect(() => {
+    const savedImage = localStorage.getItem("profileImage");
+    console.log("Retrieved Image from localStorage:", savedImage); // Debugging step
+    if (savedImage && savedImage.startsWith("https")) {
+      setImagePreview(savedImage);
+    }
+  }, []);
+
   const handleLogoClick = () => {
     fileInputRef.current.click();
   };
 
-  const handleFileChange = (event) => {
-    // You can handle the selected file here if needed
+  const handleFileChange = async (event) => {
     const file = event.target.files[0];
-    // For now, just log the file name
-    if (file) {
-      const previewURL = URL.createObjectURL(file);
-      setImagePreview(previewURL);
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+    formData.append("folder", "profile_photos");
+
+    try {
+      const response = await axios.post(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        formData
+      );
+
+      const { secure_url } = response.data;
+      if (secure_url) {
+        setImagePreview(secure_url);
+        localStorage.setItem("profileImage", secure_url); // ✅ Store Cloudinary URL
+        console.log("Saved Image to localStorage:", secure_url); // Debugging step
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
     }
   };
-  const handleUploadClick = () => {
-    fileInputRef.current.click();
-  };
+
   return (
     <div>
       <div className="max-w-sm mx-auto bg-white shadow-md rounded-lg p-4 flex items-center space-x-4">

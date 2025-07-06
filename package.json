@@ -1,14 +1,19 @@
 {
   "name": "footwear-fossip",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "",
+  "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "nodemodem"
+    "start": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "client": "cd footwear && npm start",
+    "server": "cd server && npm run dev"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -25,6 +30,7 @@
     "emailjs-com": "^3.2.0",
     "express": "^5.1.0",
     "firebase": "^11.8.1",
+    "firestore": "^1.1.6",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
@@ -45,6 +51,7 @@
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
@@ -52,5 +59,8 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.6",
     "vite": "^6.3.5"
-  }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
