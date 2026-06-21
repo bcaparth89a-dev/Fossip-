@@ -1,0 +1,31 @@
+The Ude the appliction add the product Code Like
+"123ABC": {
+      id: 1,
+      name: "puma's Brand new shoes",
+      unitPrice: 4000,
+      code: "123ABC",
+    },
+    942933: {
+      id: 1,
+      name: "Semis Brown Printed Sneaker",
+      unitPrice: 3000,
+      code: "942933",
+    },
+    903358: {
+      id: 1,
+      name: "unisex Brown Printed Sneaker",
+      unitPrice: 2000,
+      code: "903358",
+    },
+    635522: {
+      id: 1,
+      name: "Man's Brown Printed Sneaker",
+      unitPrice: 1000,
+      code: "635522",
+    },
+    799010: {
+      id: 1,
+      name: "WoMan's Brown Printed Sneaker",
+      unitPrice: 2000,
+      code: "799010",
+    },
