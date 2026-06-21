@@ -12,3 +12,14 @@ input::-webkit-inner-spin-button {
 input[type='number'] {
   -moz-appearance: textfield; /* Firefox */
 }
+/* PDF Safe Mode */
+.pdf-mode,
+.pdf-mode * {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+
+  /* Prevent oklch() colors from Tailwind v4 */
+  box-shadow: none !important;
+  text-shadow: none !important;
+}

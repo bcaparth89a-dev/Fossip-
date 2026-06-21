@@ -2,3 +2,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* PDF Safe Mode */
+/* PDF SAFE MODE */
+.pdf-mode,
+.pdf-mode * {
+  color: #000 !important;
+  background-color: #fff !important;
+  border-color: #d1d5db !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}

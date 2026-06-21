@@ -1,54 +1,29 @@
-import { useState, useRef } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { useState, useRef, useEffect } from "react";
 import negativeImage from "../assets/Negetive2.png";
 import id from "../assets/id.png";
 import "@fortawesome/react-fontawesome";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import Toggle from "./Toggle.jsx";
-import { useEffect } from "react";
-import Barcode from "react-barcode";
 import { db } from "./firebase.js";
 import { ref, set } from "firebase/database";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { collection, addDoc } from "firebase/firestore";
-import { dbFirestore } from "./firebase.js"; // Make sure your firestore db is exported as `dbFirestore`
+import { dbFirestore } from "./firebase.js";
 import { doc, setDoc } from "firebase/firestore";
 import validator from "validator";
-import Invoice2 from "./Invoice2.jsx";
 
 const Invoice = () => {
   const [display, setdisplay] = useState(false);
   const discountRef = useRef(null);
-  const navigate = useNavigate(); // Initialize useNavigate here
+  const navigate = useNavigate();
 
-  // accessing value
-  const [name, setName] = useState();
-  const [email, setEmail] = useState();
+  // Accessing values
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phonenumber, setPhoneNumber] = useState("");
   const [date, setDate] = useState("");
-  const [productCode, setProductCode] = useState(""); // what user types
+  const [productCode, setProductCode] = useState("");
   const [products, setProducts] = useState([]);
 
-  // counter button
-  const [count, setCount] = useState(1);
-  const increase = () => setCount(count + 1);
-  const decrease = () => {
-    if (count > 1) setCount(count - 1);
-  };
-  // product name logic container 2
-  const textRef = useRef(null);
-  const [isOverflowed, setIsOverflowed] = useState(false);
-
-  useEffect(() => {
-    const el = textRef.current;
-    if (el) {
-      setIsOverflowed(el.scrollWidth > el.clientWidth);
-    }
-  }, [name]);
-  // products found
-  //  sample barcode
+  // Barcode dictionary
   const sampleProducts = {
     "123ABC": {
       id: 1,
@@ -82,23 +57,23 @@ const Invoice = () => {
     },
   };
 
-  // search logic
+  // Search logic
   const handleSearch = () => {
-    const found = sampleProducts[productCode]; // Look up the barcode
+    const found = sampleProducts[productCode];
     if (found) {
       setProducts((prev) => [...prev, { ...found, id: Date.now(), qty: 1 }]);
-      // Add to list
-      setProductCode(""); // Clear input box
+      setProductCode("");
     } else {
       alert("Product not found!");
     }
   };
+
   // Quantity logic
   const increaseQty = (id) => {
     setProducts((prev) =>
       prev.map((product) =>
-        product.id === id ? { ...product, qty: product.qty + 1 } : product
-      )
+        product.id === id ? { ...product, qty: product.qty + 1 } : product,
+      ),
     );
   };
 
@@ -107,31 +82,32 @@ const Invoice = () => {
       prev.map((product) =>
         product.id === id && product.qty > 1
           ? { ...product, qty: product.qty - 1 }
-          : product
-      )
+          : product,
+      ),
     );
   };
 
-  //  thrash button logic
+  // Delete logic
   const handleDelete = (id) => {
     setProducts((prev) => prev.filter((product) => product.id !== id));
   };
 
-  // subtotal logic
+  // Subtotal logic
   const subtotal = products.reduce(
     (acc, item) => acc + item.unitPrice * item.qty,
-    0
+    0,
   );
-  // Discount
-  const [discount, setDiscount] = useState("");
 
-  // clear form-set all the information at that default value
+  // Discount
+  const [discount, setDiscount] = useState(0);
+
+  // Clear form
   const handleClear = () => {
     setName("");
     setEmail("");
     setPhoneNumber("");
-    setDiscount("");
-    setProducts([]); // Clears product list
+    setDiscount(0);
+    setProducts([]);
   };
 
   // Invoice Number Logic
@@ -141,21 +117,38 @@ const Invoice = () => {
     let result = "";
     for (let i = 0; i < length; i++) {
       const randomChar = characters.charAt(
-        Math.floor(Math.random() * characters.length)
+        Math.floor(Math.random() * characters.length),
       );
       result += randomChar;
     }
     return result;
   }
 
-  const [invoiceNumber, setInvoiceNumber] = useState(() => {
+  const [invoiceNumber] = useState(() => {
     const invoicePrefix = "NOBLE-";
     const uniqueId = generateRandomString(5);
     return invoicePrefix + uniqueId;
   });
 
-  // firebase
+  // Save to Firebase
   const handleSave = async () => {
+    if (!name.trim()) {
+      alert("Please fill in the Customer Name.");
+      return;
+    }
+    if (errorMessage1) {
+      alert("Please enter a valid Email address.");
+      return;
+    }
+    if (errorMessage) {
+      alert("Please enter a valid 10-digit Phone number.");
+      return;
+    }
+    if (products.length === 0) {
+      alert("Please add at least one product before saving.");
+      return;
+    }
+
     const invoiceData = {
       invoiceNumber: invoiceNumber,
       name: name,
@@ -174,75 +167,79 @@ const Invoice = () => {
       total: subtotal - discount,
     };
 
-    // Construct a unique ID
     const invoiceId = `${invoiceNumber}_${name.replace(/\s+/g, "")}`;
 
+    // Local Storage save
+    window.localStorage.setItem("latestInvoice", JSON.stringify(invoiceData));
+
     try {
-      // ✅ Save to Realtime Database
+      // Save to Realtime Database
       await set(ref(db, "invoices/invoice1"), invoiceData);
 
-      // ✅ Save to Firestore for permanent record
+      // Save to Firestore
       await setDoc(doc(dbFirestore, "invoices", invoiceId), invoiceData);
 
-      alert("Invoice saved to Firebase Realtime DB and Firestore!");
-      navigate("/invoice2");
+      alert("Invoice saved to Firebase database!");
     } catch (error) {
       console.error("Error saving invoice:", error);
-      alert("Error saving invoice: " + error.message);
+      alert(
+        "Warning: Invoice data could not be saved to Firebase, but you can still view the preview.",
+      );
     }
+
+    navigate("/invoice2", { state: { invoiceData } });
   };
 
-  // EMail validation Logic
-  const [errorMessage1, setErrorMessage1] = useState("Email is required."); // Default error message
+  // Email validation Logic
+  const [errorMessage1, setErrorMessage1] = useState("Email is required.");
 
   const handleEmail = (event) => {
-    let value = event.target.value.trim(); // Remove leading/trailing spaces
+    let value = event.target.value.trim();
     setEmail(value);
 
-    // Validate email format dynamically
     if (value.length === 0) {
       setErrorMessage1("Email is required.");
     } else if (validator.isEmail(value)) {
-      setErrorMessage1(""); // Clear error when valid
+      setErrorMessage1("");
     } else {
       setErrorMessage1("Enter a valid email address.");
     }
   };
 
-  // Phonne number logic -----
+  // Phone validation Logic
   const [errorMessage, setErrorMessage] = useState(
-    "Phone number is must required."
-  ); // Default error message
+    "Phone number is required.",
+  );
+  
   const handlePhone = (event) => {
-    let value = event.target.value.replace(/\D/g, ""); // Remove non-digit characters
+    let value = event.target.value.replace(/\D/g, "");
 
-    // Check if input is empty first
     if (value.length === 0) {
-      setErrorMessage("Phone number is must required."); // Show error when empty
-      setPhoneNumber(""); // Ensures empty state
+      setErrorMessage("Phone number is required.");
+      setPhoneNumber("");
       return;
     }
-    // Restrict input strictly to 10 digits
+    
     if (value.length > 10) {
       value = value.slice(0, 10);
     }
-    // Allow user to modify input while typing
+    
     setPhoneNumber(value);
-    // Validate dynamically
+    
     if (value.length === 10) {
       if (/^[6-9]\d{9}$/.test(value)) {
-        setErrorMessage(""); // Clear error when valid
+        setErrorMessage("");
       } else {
         setErrorMessage(
-          "Phone number must start with 6-9 and be exactly 10 digits."
+          "Phone number must start with 6-9 and be exactly 10 digits.",
         );
       }
     } else {
       setErrorMessage("Phone number must be exactly 10 digits long.");
     }
   };
-  // Date logic
-  // Set current date as default when component mounts
+
+  // Set default current date
   useEffect(() => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -252,333 +249,369 @@ const Invoice = () => {
   }, []);
 
   return (
-    <div className="w-screen h-screen overflow-x-auto overflow-y-auto">
-      <div>
-        {/* Navigation part starts from here */}
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="h-15 w-full border-b border-gray-200 bg-white flex items-center justify-between px-4 py-2">
-            {/* Logo */}
-            <div className="flex items-center">
-              <img
-                src={negativeImage}
-                alt="Logo"
-                className="w-20 h-auto object-contain"
+    <div className="min-h-screen bg-slate-50 font-sans flex flex-col w-full text-slate-800">
+      
+      {/* Premium Sticky Navigation Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-slate-200/80 shadow-sm backdrop-blur-md">
+        <div className="h-16 w-full max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6">
+          {/* Brand Logo */}
+          <div className="flex items-center gap-3">
+            <img
+              src={negativeImage}
+              alt="Logo"
+              className="w-16 h-auto object-contain cursor-pointer transition hover:opacity-90"
+              onClick={() => navigate("/")}
+            />
+            <span className="hidden sm:block text-base font-bold text-slate-850 tracking-wide bg-gradient-to-r from-indigo-700 to-indigo-900 bg-clip-text text-transparent">
+              Noble Footwear Builder
+            </span>
+          </div>
+
+          {/* Right side: Search bar + Profile */}
+          <div className="flex items-center gap-4">
+            
+            {/* Elegant Scanner Bar */}
+            <div className="flex items-center border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-150/40 transition-all w-48 sm:w-64 md:w-80 shadow-inner">
+              <svg
+                className="w-4 h-4 text-slate-400 mr-2"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                className="text-xs sm:text-sm bg-transparent focus:outline-none placeholder:text-slate-400 w-full text-slate-700"
+                value={productCode}
+                onChange={(e) => setProductCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
+                placeholder="Scan barcode or type code..."
               />
             </div>
-            {/* Right side: Search bar + Profile */}
-            <div className="flex items-center gap-4">
-              {/* Search Bar */}
-              <div className="ml-6 flex items-center border border-gray-300 rounded-md px-2 h-8 bg-gray-50 hover:border-gray-700">
-                <svg
-                  className="w-4 h-4 text-gray-500 mr-1"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M12.9 14.32a8 8 0 111.414-1.414l4.243 4.243a1 1 0 01-1.414 1.414l-4.243-4.243zM8 14a6 6 0 100-12 6 6 0 000 12z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  className=" text-sm w-43 bg-transparent focus:outline-none placeholder:text-gray-500"
-                  value={productCode}
-                  onChange={(e) => setProductCode(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSearch();
-                  }}
-                  placeholder="Scan barcode or type code"
-                />
-              </div>
 
-              {/* Profile */}
-              <div className="flex items-center gap-1 whitespace-nowrap max-w-[150px] sm:max-w-none overflow-hidden">
-                <button
-                  onClick={() => setdisplay(!display)}
-                  className="flex-shrink-0"
-                >
-                  <img
-                    src={id}
-                    alt="User"
-                    className="w-6 sm:w-8 h-6 sm:h-8 border border-gray-400 rounded"
-                  />
-                </button>
-                <button
-                  onClick={() => setdisplay(!display)}
-                  className="text-xs sm:text-sm text-gray-700 hover:text-black truncate"
-                >
-                  Biller, Raju Bhai
-                </button>
-              </div>
+            {/* Profile Avatar Trigger */}
+            <div className="flex items-center gap-2 relative">
+              <button
+                onClick={() => setdisplay(!display)}
+                className="flex-shrink-0 cursor-pointer rounded-xl overflow-hidden border border-slate-200 hover:border-slate-350 transition shadow-sm"
+              >
+                <img
+                  src={id}
+                  alt="User"
+                  className="w-8 h-8 object-cover"
+                />
+              </button>
+              <button
+                onClick={() => setdisplay(!display)}
+                className="hidden md:block text-sm font-semibold text-slate-700 hover:text-indigo-600 transition cursor-pointer"
+              >
+                Biller Raju
+              </button>
+              
+              {/* Dropdown Menu */}
+              {display && (
+                <div className="absolute top-11 right-0 w-64 bg-white border border-slate-100 shadow-xl rounded-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Toggle />
+                </div>
+              )}
             </div>
-            {/* Toggle Menu */}
-            {display && (
-              <div className="absolute top-14 right-4 w-72 bg-white shadow-md rounded z-50">
-                <Toggle />
-              </div>
-            )}
           </div>
         </div>
-        {/* End of Nav Bar */}
-        {/* Invoice part starts from here */}
-        <div className="p-2 sm:p-6 md:p-4 bg-gray-200 min-h-screen">
-          <div className="ml-8 w-400S h-180 sd:h-150  md:h-180 ld:h-200 flex items-center justify-center space-x-4">
-            {/* First Container */}
-            <div className="flex flex-col h-[97%] w-[75%] sm:h-[115%] md:h-[107%] lg:h-[97%] sm:w-[90%] md:w-[85%] lg:w-[75%] bg-white mt-3 mx-auto mb-3 border-gray-300 border-[3px] shadow-md rounded hover:border-gray-200 ">
-              {/* Part 1: Header */}
-              <div className="flex-grow px-4 flex items-center justify-between mt-3">
-                <p className="font-bold text-base sm:text-lg md:text-xl lg:text-xl">
-                  Invoice Preview
-                </p>
-              </div>
-              {/* Part 2: Invoice Number and Date */}
-              <div className="px-4 flex justify-between items-center mt-5 mb-2">
-                <p className="font-bold underline text-sm sm:text-base md:text-lg w-[50%] whitespace-nowrap overflow-hidden text-ellipsis">
-                  {invoiceNumber}
-                </p>
-                <p className="text-sm sm:text-base md:text-[16px] text-right w-[50%] whitespace-nowrap overflow-hidden text-ellipsis">
-                  {date}
-                </p>
-              </div>
-              {/* Part 3: Customer Info Inputs */}
-              {/* Part 3: Customer Info Inputs */}
-              <div className="px-4 mt-4 flex flex-col gap-1.5">
-                {/* Name */}
-                <div className="mb-1">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="First_Name Last_name"
-                    className="text-base sm:text-[17px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none w-[180px] sm:w-[200px]"
-                    required
-                  />
-                  <p className="text-red-500 text-xs sm:text-[12px] mt-[2px] min-h-[16px] sm:min-h-[18px]">
-                    {name ? "" : "Name is Required"}
-                  </p>
-                </div>
+      </div>
 
-                {/* Email */}
-                <div className="mb-1">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={handleEmail}
-                    placeholder="abc123@gmail.com"
-                    className="text-base sm:text-[17px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none w-[180px] sm:w-[200px]"
-                    required
-                  />
-                  <p className="text-red-500 text-xs sm:text-[12px] mt-[2px] min-h-[16px] sm:min-h-[18px]">
-                    {errorMessage1}
-                  </p>
-                </div>
+      {/* Main Builder Area */}
+      <div className="flex-grow p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full">
+          
+          {/* Column 1: Live Invoice sheet preview & inputs */}
+          <div className="flex flex-col flex-[1.4] bg-white border border-slate-200/70 shadow-md rounded-2xl p-5 md:p-6 transition hover:shadow-lg">
+            
+            {/* Section Title */}
+            <div className="border-b border-slate-100 pb-4 mb-4 flex justify-between items-center">
+              <h2 className="font-bold text-lg text-slate-800">
+                Invoice Details
+              </h2>
+              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2.5 py-1 rounded-md">
+                Auto-Save Enabled
+              </span>
+            </div>
 
-                {/* Phone */}
-                <div>
-                  <input
-                    type="tel"
-                    value={phonenumber}
-                    onChange={handlePhone}
-                    placeholder="XXXXXXXXXX"
-                    maxLength="14"
-                    className="text-base sm:text-[17px] border-0 border-b-2 border-b-gray-300 focus:border-b-gray-400 focus:outline-none w-[180px] sm:w-[200px]"
-                    required
-                  />
-                  <p className="text-red-500 text-xs sm:text-[12px] mt-[2px] min-h-[16px] sm:min-h-[18px]">
-                    {errorMessage}
-                  </p>
-                </div>
+            {/* Metadata (Bill No and Date) */}
+            <div className="flex justify-between items-center text-xs md:text-sm text-slate-500 font-medium">
+              <p className="font-mono bg-slate-50 text-slate-700 px-2.5 py-1 rounded border border-slate-100">
+                NO: {invoiceNumber}
+              </p>
+              <p className="font-mono bg-slate-50 text-slate-700 px-2.5 py-1 rounded border border-slate-100">
+                DATE: {date}
+              </p>
+            </div>
+
+            {/* Customer Inputs Form Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              {/* Customer Name */}
+              <div className="flex flex-col">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Customer Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="First Name Last Name"
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all focus:outline-none"
+                  required
+                />
+                <span className="text-red-500 text-xs mt-1 min-h-[16px]">
+                  {name ? "" : "Name is Required"}
+                </span>
               </div>
-              {/* Part 4: Product Table */}
-              <div className="px-4 mt-5 h-[170px] w-full overflow-y-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-100 sticky top-0 z-10 border-y-2 border-gray-300">
-                    <tr className="p-2 border-y-2 border-gray-300">
-                      <th className="p-2 w-[40%]">Product</th>
-                      <th className="p-2 w-[15%]">QTY No</th>
-                      <th className="p-2 w-[20%]">Unit Price</th>
-                      <th className="p-2 w-[25%]">Total Price</th>
+
+              {/* Email Address */}
+              <div className="flex flex-col">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={handleEmail}
+                  placeholder="abc123@gmail.com"
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all focus:outline-none"
+                  required
+                />
+                <span className="text-red-500 text-xs mt-1 min-h-[16px]">
+                  {errorMessage1}
+                </span>
+              </div>
+
+              {/* Phone Number */}
+              <div className="flex flex-col">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phonenumber}
+                  onChange={handlePhone}
+                  placeholder="XXXXXXXXXX"
+                  maxLength="14"
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all focus:outline-none"
+                  required
+                />
+                <span className="text-red-500 text-xs mt-1 min-h-[16px]">
+                  {errorMessage}
+                </span>
+              </div>
+            </div>
+
+            {/* Live Product Table */}
+            <div className="mt-6 flex-grow overflow-hidden border border-slate-100 rounded-xl">
+              <div className="h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-slate-600 font-semibold">
+                    <tr>
+                      <th className="p-3 w-[45%]">Product Description</th>
+                      <th className="p-3 w-[15%] text-center">QTY</th>
+                      <th className="p-3 w-[20%] text-right">Unit Price</th>
+                      <th className="p-3 w-[20%] text-right pr-4">Total</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {products.map((product, index) => (
-                      <tr key={index} className="border-b border-gray-200">
-                        <td className="pl-2 whitespace-nowrap overflow-hidden text-ellipsis">
-                          {product.name}
-                        </td>
-                        <td className="pl-2">{product.qty}</td>
-                        <td className="pl-2">{product.unitPrice}</td>
-                        <td className="pl-2">
-                          {product.qty * product.unitPrice}
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {products.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="text-center py-12 text-slate-450 italic">
+                          No items added. Use the search/scan bar to add footwear.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      products.map((product, index) => (
+                        <tr key={product.id || index} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3 max-w-[180px] truncate" title={product.name}>
+                            {product.name}
+                          </td>
+                          <td className="p-3 text-center font-medium">{product.qty}</td>
+                          <td className="p-3 text-right">₹{product.unitPrice}</td>
+                          <td className="p-3 text-right pr-4 font-semibold text-slate-800">
+                            ₹{product.qty * product.unitPrice}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
-              {/* Part 5: Totals */}
-              <div className="mt-10 mb-0 w-full px-4 flex justify-end">
-                <div className="w-full max-w-[260px] sm:max-w-[250px]">
-                  <table className="w-full text-[16px]">
-                    <tbody>
-                      <tr>
-                        <th className="p-2 text-right w-1/2">SubTotal</th>
-                        <td className="p-2 text-right whitespace-nowrap">
-                          ₹ {subtotal}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="p-2 text-right w-1/2">Discount</th>
-                        <td className="p-2 text-right whitespace-nowrap">
-                          ₹ {discount}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="p-2 text-right w-1/2">Total</th>
-                        <td className="p-2 text-right whitespace-nowrap">
-                          ₹ {subtotal - discount}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {/* Part 6: Footer */}
-              <div className="mb-2 mt-auto">
-                <hr className="border-t border-gray-300 mt-5 mx-4" />
-                <p className="text-center text-sm mt-2 ">
-                  THANK YOU FOR SHOPPING WITH US,VISIT AGAIN
-                </p>
+            </div>
+
+            {/* Preview Sheet Totals summary */}
+            <div className="mt-6 pt-4 border-t border-slate-100 mb-2 w-full flex justify-end">
+              <div className="w-full max-w-[280px] bg-slate-50 border border-slate-100 rounded-xl p-4">
+                <table className="w-full text-sm text-slate-600 space-y-1">
+                  <tbody>
+                    <tr>
+                      <th className="text-left font-medium pb-1.5">Gross SubTotal</th>
+                      <td className="text-right font-semibold text-slate-800 pb-1.5">₹{subtotal}</td>
+                    </tr>
+                    <tr>
+                      <th className="text-left font-medium pb-1.5">Savings Discount</th>
+                      <td className="text-right font-semibold text-emerald-600 pb-1.5">₹{discount}</td>
+                    </tr>
+                    <tr className="border-t border-slate-200">
+                      <th className="text-left font-bold pt-2 text-slate-800">Net Payable</th>
+                      <td className="text-right font-bold pt-2 text-slate-900 text-lg">₹{subtotal - discount}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
-            {/* container 1 Ends here */}
-            {/* Second Conatainer */}
-            <div className="h-[97%] w-[35%] sm:w-[50%] bg-white mt-2 ml-6 mr-10 mb-3 border-gray-300 border-3 shadow-4xl rounded hover:border-gray-200 shadow-md flex flex-col">
-              {/* Part 1: Responsive Product List */}
-              <div className="h-[350px] bg-white overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 px-3 sm:px-4 md:px-5">
-                {products.map((product) => (
-                  <div key={product.id} className="mb-2">
-                    {/* Product name and delete button */}
-                    <div className="flex justify-between items-center py-2 gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p
-                          title={product.name}
-                          className="
-              text-sm sm:text-base md:text-[16px] 
-              sm:max-w-[150px] md:max-w-[100%] lg:max-w-[100%]:
-              overflow-hidden text-ellipsis whitespace-nowrap 
-              sm:overflow-visible sm:whitespace-normal sm:text-clip
-              hover:cursor-pointer
-            "
-                        >
-                          {product.name}
-                        </p>
-                      </div>
 
-                      <button onClick={() => handleDelete(product.id)}>
-                        <i className="fa-solid fa-trash hover:text-red-800 text-sm md:text-base"></i>
-                      </button>
-                    </div>
+            {/* Note banner */}
+            <div className="border-t border-slate-100 pt-4 mt-auto">
+              <p className="text-center text-xs font-semibold text-slate-450 uppercase tracking-widest">
+                SHREE NOBLE FOOTWEAR • composition Scheme
+              </p>
+            </div>
+          </div>
 
-                    {/* Quantity controls and unit price */}
-                    <div className="flex justify-between items-center gap-2">
-                      <div
-                        className="flex items-center bg-white px-4 rounded-lg shadow-md h-7 
-                        w-[80px] sm:w-[90px] md:w-[100px]"
-                      >
-                        <button
-                          onClick={() => decreaseQty(product.id)}
-                          className="text-sm bg-white hover:bg-gray-300 text-black font-bold rounded px-1"
-                        >
-                          –
-                        </button>
-                        <span className="mx-1 text-sm font-semibold text-black">
-                          {product.qty}
-                        </span>
-                        <button
-                          onClick={() => increaseQty(product.id)}
-                          className="bg-white hover:bg-gray-300 text-black font-bold rounded px-1"
-                        >
-                          +
-                        </button>
-                      </div>
-
-                      <p className="text-sm sm:text-base md:text-[16px] whitespace-nowrap">
-                        ₹{product.unitPrice}
-                      </p>
-                    </div>
-
-                    {/* Divider */}
-                    <hr className="border-t border-gray-300 mt-2" />
+          {/* Column 2: Biller Control Side Panel */}
+          <div className="flex flex-col flex-[1] bg-white border border-slate-200/70 shadow-md rounded-2xl p-5 md:p-6 transition hover:shadow-lg justify-between">
+            
+            {/* Header */}
+            <div>
+              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+                <span>Selected Footwear</span>
+                <span className="bg-indigo-150 text-indigo-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {products.length} Items
+                </span>
+              </h3>
+              
+              {/* Product cards list container */}
+              <div className="max-h-[300px] lg:max-h-[380px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent pr-1 space-y-3">
+                {products.length === 0 ? (
+                  <div className="h-full flex flex-col justify-center items-center py-20 text-slate-400">
+                    <svg className="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                    </svg>
+                    <p className="text-sm font-medium">No products added yet</p>
+                    <p className="text-xs text-slate-400 mt-1">Use barcode field at top to add items.</p>
                   </div>
-                ))}
-              </div>
-              {/* part 2 */}
-              <div className="w-full mt-8 px-3 sm:px-4 md:px-6 overflow-x-auto ">
-                <div className="w-full max-w-full">
-                  <table className="w-full text-center text-[16px] table-fixed">
-                    <tbody>
-                      <tr>
-                        <th className="py-2 w-1/2 text-left">SubTotal</th>
-                        <td className="h-10 text-right">₹{subtotal}</td>
-                      </tr>
-                      <tr>
-                        <th
-                          className="py-2 w-1/2 text-left cursor-pointer"
-                          onClick={() => discountRef.current?.focus()}
+                ) : (
+                  products.map((product) => (
+                    <div key={product.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3 hover:border-indigo-200 hover:bg-slate-100/30 transition-all shadow-sm">
+                      {/* Product Name & Delete */}
+                      <div className="flex justify-between items-start gap-2 mb-2">
+                        <h4 className="text-sm font-semibold text-slate-750 leading-snug truncate flex-grow" title={product.name}>
+                          {product.name}
+                        </h4>
+                        <button 
+                          onClick={() => handleDelete(product.id)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded-lg hover:bg-rose-50 cursor-pointer"
+                          title="Remove product"
                         >
-                          Discount
-                        </th>
-                        <td className="h-10 text-right">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Quantity controls and price tag */}
+                      <div className="flex justify-between items-center mt-3">
+                        {/* +/- count selectors */}
+                        <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden h-8 shadow-sm">
+                          <button
+                            onClick={() => decreaseQty(product.id)}
+                            className="w-7 h-full bg-slate-50 hover:bg-slate-150 text-slate-600 font-bold transition-colors cursor-pointer text-center text-xs"
+                          >
+                            –
+                          </button>
+                          <span className="w-8 text-center text-sm font-semibold text-slate-800">
+                            {product.qty}
+                          </span>
+                          <button
+                            onClick={() => increaseQty(product.id)}
+                            className="w-7 h-full bg-slate-50 hover:bg-slate-150 text-slate-600 font-bold transition-colors cursor-pointer text-center text-xs"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-400 block font-medium">Amount</span>
+                          <span className="text-sm font-bold text-slate-800">₹{product.qty * product.unitPrice}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Calculations & Discount Section */}
+            <div className="mt-6 border-t border-slate-150/60 pt-4">
+              <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <table className="w-full text-sm text-slate-600">
+                  <tbody className="space-y-3">
+                    <tr>
+                      <th className="text-left font-semibold text-slate-700">Gross Amount</th>
+                      <td className="text-right font-bold text-slate-800">₹{subtotal}</td>
+                    </tr>
+                    <tr>
+                      <th 
+                        className="text-left font-semibold text-slate-700 cursor-pointer flex items-center gap-1.5 hover:text-indigo-650 transition-colors"
+                        onClick={() => discountRef.current?.focus()}
+                      >
+                        <span>Applied Discount</span>
+                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </th>
+                      <td className="text-right">
+                        <div className="relative inline-block">
+                          <span className="absolute left-2.5 top-1.5 text-slate-450 font-bold text-xs">₹</span>
                           <input
                             ref={discountRef}
                             type="number"
+                            value={discount}
                             onChange={(e) =>
-                              setDiscount(Number(e.target.value))
+                              setDiscount(
+                                e.target.value === ""
+                                  ? 0
+                                  : Number(e.target.value),
+                              )
                             }
-                            className="w-[60px] sm:w-[80px] md:w-[100px] border-b-2 border-gray-900 outline-none bg-transparent text-right text-[16px] truncate"
+                            className="w-[100px] border border-slate-200 rounded-lg outline-none bg-white text-right pl-6 pr-2 py-1 text-sm font-bold text-slate-850 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                           />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="py-2 text-left">Total</th>
-                        <td className="h-10 text-right">
-                          ₹{subtotal - discount}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="border-t border-slate-200/80 pt-3">
+                      <th className="text-left font-bold text-slate-800 pt-3">Net Bill Payable</th>
+                      <td className="text-right font-extrabold text-indigo-700 text-lg pt-3">
+                        ₹{subtotal - discount}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
-              {/* Button Section */}
-              {/* Button Section */}
-              <div className="flex justify-center sm:justify-end gap-3 mt-6 flex-wrap">
-                <button
-                  onClick={handleSave}
-                  className="h-8 px-3 sm:px-4 text-xs sm:text-sm bg-blue-500 text-white text-center border-2 border-blue-600 rounded active:bg-white active:text-black transition"
-                >
-                  Submit
-                </button>
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 mt-6">
                 <button
                   onClick={handleClear}
-                  className="h-8 px-3 sm:px-4 text-xs sm:text-sm bg-blue-500 text-white text-center border-2 border-blue-600 rounded active:bg-white active:text-black transition"
+                  className="flex-1 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:bg-slate-100 hover:border-slate-300 transition-all cursor-pointer shadow-sm text-center"
                 >
-                  Clear
+                  Clear All
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex-1.2 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 border border-indigo-600 rounded-xl shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer text-center"
+                >
+                  Save & Preview
                 </button>
               </div>
-
-              {/* Part 6: Footer */}
-              <div className="mb-2 mt-auto">
-                <hr className="border-t border-gray-300 mt-5 mx-4" />
-                <p className="text-center text-sm mt-2">THANK YOU</p>
-              </div>
             </div>
+
           </div>
         </div>
       </div>
     </div>
   );
 };
+
 export default Invoice;
