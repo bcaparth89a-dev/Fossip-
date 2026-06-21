@@ -11,6 +11,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import emailjs from "@emailjs/browser";
 import { useNavigate, useLocation } from "react-router-dom";
+import DeveloperModal from "./DeveloperModal.jsx";
 
 const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
 const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
@@ -22,6 +23,7 @@ const Invoice2 = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [cachedPDF, setCachedPDF] = useState(null);
+  const [isDevModalOpen, setIsDevModalOpen] = useState(false);
   const invoiceRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [invoice, setInvoice] = useState(() => {
@@ -539,6 +541,18 @@ Thank you for shopping with us.`;
           {/* Part 4 Ends Here */}
         </div>
       </div>
+
+      {/* Footer trigger */}
+      <div className="py-4 bg-slate-50 border-t border-slate-200/50 text-center text-xs text-slate-550 w-full mt-auto print:hidden">
+        <button 
+          onClick={() => setIsDevModalOpen(true)}
+          className="hover:text-indigo-650 transition cursor-pointer font-bold uppercase tracking-wider text-slate-400 hover:underline"
+        >
+          Made by Parth Pawar
+        </button>
+      </div>
+
+      <DeveloperModal isOpen={isDevModalOpen} onClose={() => setIsDevModalOpen(false)} />
     </div>
   );
 };

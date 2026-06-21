@@ -9,11 +9,15 @@ import { useNavigate } from "react-router-dom";
 import { dbFirestore } from "./firebase.js";
 import { doc, setDoc } from "firebase/firestore";
 import validator from "validator";
+import DeveloperModal from "./DeveloperModal.jsx";
 
 const Invoice = () => {
   const [display, setdisplay] = useState(false);
   const discountRef = useRef(null);
   const navigate = useNavigate();
+
+  const [showSplash, setShowSplash] = useState(true);
+  const [isDevModalOpen, setIsDevModalOpen] = useState(false);
 
   // Accessing values
   const [name, setName] = useState("");
@@ -247,6 +251,36 @@ const Invoice = () => {
     const dd = String(today.getDate()).padStart(2, "0");
     setDate(`${yyyy}-${mm}-${dd}`);
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex flex-col justify-center items-center z-50 animate-in fade-in duration-300">
+        <div className="text-center space-y-6">
+          <img
+            src={negativeImage}
+            alt="Logo"
+            className="w-32 h-auto object-contain mx-auto animate-pulse"
+          />
+          <div>
+            <h1 className="text-3xl font-extrabold text-white tracking-widest uppercase">
+              SHREE NOBLE FOOTWEAR
+            </h1>
+            <p className="text-indigo-400 font-semibold tracking-wider uppercase text-sm mt-2">
+              Invoice System
+            </p>
+          </div>
+          <div className="w-16 h-1 border-t-2 border-indigo-500 rounded-full mx-auto animate-spin mt-4"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col w-full text-slate-800">
@@ -610,6 +644,18 @@ const Invoice = () => {
           </div>
         </div>
       </div>
+      
+      {/* Footer trigger */}
+      <div className="py-6 border-t border-slate-200/50 bg-white text-center text-xs text-slate-500 w-full mt-auto">
+        <button 
+          onClick={() => setIsDevModalOpen(true)}
+          className="hover:text-indigo-650 transition cursor-pointer font-bold uppercase tracking-wider text-slate-400 hover:underline"
+        >
+          Made by Parth Pawar
+        </button>
+      </div>
+
+      <DeveloperModal isOpen={isDevModalOpen} onClose={() => setIsDevModalOpen(false)} />
     </div>
   );
 };
