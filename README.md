@@ -1,5 +1,6 @@
 I will inspect the files and folders inside the `src` directory to outline the application components, files, and overall architecture.
 
+Deploy ment Link : https://kaleidoscopic-profiterole-9e4a9c.netlify.app/
 Listed directory src
 
 I will inspect the contents of `src/pages` to list the page components.
